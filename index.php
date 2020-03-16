@@ -50,8 +50,12 @@ function w5pagename($pagetitle) {
   return str_replace(' ', '_', strtolower($pagetitle));
 }
 
-function w5action($action) {
-  w5link("index.php?do=" . w5pagename($action), $action);
+function w5action($action, $page="") {
+  $pageedit = "";
+  if ($page != "") {
+    $pageedit = "&page=" . $page;
+  }
+  w5link("index.php?do=" . w5pagename($action) . $pageedit, $action);
 }
 
 function w5page($pagetitle) {
@@ -59,40 +63,56 @@ function w5page($pagetitle) {
 }
 
 function w5menu() {
+  global $do, $page;
   echo "<div id=\"w5mainmenu\">";
   w5home("Home");
   w5action("New");
   w5page("About");
   w5action("Site Index");
+  if ($do == 'view') {
+    w5action("Edit", $page);
+  }
   echo "</div>";
 }
 
+$textarea = 0;
+
 function w5input($type, $divclass, $id, $title="", $content="") {
+  global $textarea;
   echo "<div class=\"$divclass\" id=\"input_$id\" name=\"input_$id\">";
   if ($title != "") {
     echo "<label for=\"$id\">$title</label>";
   }
   if ($type == "textarea") {
+    $textarea = $textarea + 1;
     echo "<textarea id=\"$id\" name=\"$id\"/>$content</textarea>";
   } else {
-    echo "<input type=\"$type\" id=\"$id\" name=\"$id\"/>";
+    echo "<input type=\"$type\" id=\"$id\" name=\"$id\"";
+    if ($content != "") {
+      echo " value=\"$content\"";
+    }
+    echo "/>";
   }
-  echo "</div>";
+  echo "</div>\n";
 }
 
-function w5text($id, $title) {
-  w5input("text", "inputtext inputtextfield", $id, $title);
+function w5text($id, $title, $page="") {
+  w5input("text", "inputtext inputtextfield", $id, $title, $page);
 }
 
-function w5textarea($id, $title) {
-  w5input("textarea", "inputtext inputtextarea", $id, $title);
+function w5textarea($id, $title, $content) {
+  w5input("textarea", "inputtext inputtextarea", $id, $title, $content);
 }
 
-function w5editform() {
+function w5editform($page="") {
+  $pagecontent = "";
+  if ($page != "") {
+    $pagecontent = w5filecontents($page);
+  }
   echo "<h2>New page</h2>";
   echo "<form>";
-  w5text("pagetitle", "Page title");
-  w5textarea("pagecontent", "Content");
+  w5text("pagetitle", "Page title", $page);
+  w5textarea("pagecontent", "Content", $pagecontent);
   w5input("submit", "inputsubmit", "submit");
   echo "</form>";
 }
@@ -105,11 +125,15 @@ function w5replace_tags($string) {
 }
 
 function w5filename($pagetitle) {
-  return W5_CONTENT . preg_replace("/[^a-z_]/", "", strtolower($pagetitle)) . ".md";
+  return W5_CONTENT . preg_replace("/[^a-z_]/", "", str_replace(' ', '_', strtolower($pagetitle))) . ".md";
+}
+
+function w5filecontents($pagetitle) {
+  return file_get_contents(w5filename($pagetitle));
 }
 
 function w5view($pagetitle) {
-  $page = file_get_contents(w5filename($pagetitle));
+  $page = w5filecontents($pagetitle);
   $html = MarkdownExtra::defaultTransform(w5replace_tags($page));
   echo $html;
 }
@@ -139,10 +163,12 @@ $page = '';
 if (isset($_REQUEST['page'])) {
   $page = $_REQUEST['page'];
 }
+
 $pagetitle = '';
 if ($do == 'view') {
   $pagetitle = $page;
 }
+
 if (isset($_REQUEST['submit'])) {
   /* create new page */
   $pagetitle = $_REQUEST['pagetitle'];
@@ -156,9 +182,15 @@ if (isset($_REQUEST['submit'])) {
 <!DOCTYPE html>
 <html lang="en">
   <head>
+<?php
+  echo "    <!-- powered by " . W5_TITLE . " v" . W5_VERSION . " " . W5_VERSION_DATE . " -->\n";
+  echo "    <!-- " . W5_SOFTWARE_URL . " -->\n";
+?>
     <meta charset="utf-8">
     <title><?php echo W5_TITLE; ?></title>
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
     <link rel="stylesheet" href="w5style.css">
+    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
     <script src="w5wiki.js"></script>
   </head>
   <body>
@@ -182,6 +214,9 @@ switch ($do) {
   case "view":
     w5view($page);
     break;
+  case "edit":
+    w5editform($page);
+    break;
   case "site_index":
     w5siteindex();
     break;
@@ -189,7 +224,16 @@ switch ($do) {
 ?>
     </div>
     <div id="w5footer">
-<?php w5footer(); ?>
+<?php
+w5footer();
+if ($textarea > 0) {
+  echo "<script>";
+  echo "var easyMDE = new EasyMDE();";
+  echo "</script>";
+} else {
+  //
+}
+?>
     </div>
   </body>
 </html>
