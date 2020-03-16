@@ -2,6 +2,11 @@
 
 Simple file-based Wiki for personal/intranet use
 
+## Installation
+
+See [./content/install.md](./content/install.md) for installation
+instructions.
+
 ## License
 
 Copyright (C) 2020 Ola Rinta-Koski
