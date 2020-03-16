@@ -46,8 +46,12 @@ function w5home($anchor) {
   w5link(W5_HOME, $anchor);
 }
 
+function w5pagename($pagetitle) {
+  return str_replace(' ', '_', strtolower($pagetitle));
+}
+
 function w5action($action) {
-  w5link("index.php?do=" . strtolower($action), $action);
+  w5link("index.php?do=" . w5pagename($action), $action);
 }
 
 function w5page($pagetitle) {
@@ -59,6 +63,7 @@ function w5menu() {
   w5home("Home");
   w5action("New");
   w5page("About");
+  w5action("Site Index");
   echo "</div>";
 }
 
@@ -113,6 +118,18 @@ function w5footer() {
   echo "<hr>";
 }
 
+function w5siteindex() {
+  echo "<ul>";
+  $pages = array_diff(scandir(W5_CONTENT), array('..', '.'));
+  foreach ($pages as $page) {
+    $title = ucfirst(str_replace('_', ' ', preg_replace('/\.md$/', '', strtolower($page))));
+    echo "<li>";
+    w5page($title);
+    echo "</li>";
+  }
+  echo "</ul>";
+}
+
 $do = '';
 if (isset($_REQUEST['do'])) {
   $do = $_REQUEST['do'];
@@ -164,6 +181,9 @@ switch ($do) {
     break;
   case "view":
     w5view($page);
+    break;
+  case "site_index":
+    w5siteindex();
     break;
 }
 ?>
