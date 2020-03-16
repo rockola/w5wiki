@@ -1,0 +1,25 @@
+body {
+    font-family: sans-serif;
+}
+
+h1 {
+    font-size: 20pt;
+    font-weight: bold;
+}
+
+.w5link {
+    margin-right: 10px;
+}
+
+#w5mainmenu {
+    foreground-color: #666666;
+    background-color: #ffee88;
+    display: block;
+    border: 1px;
+    padding: 5px;
+    margin-bottom: 3px;
+}
+
+#license {
+    margin-top: 20px;
+}
