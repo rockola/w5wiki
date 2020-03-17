@@ -1,8 +1,8 @@
 <?php
 /*
- *  W5
+ *  W5Wiki
  *
- *  https://github.com/rockola/w5wiki
+ *  https://github.com/rockola/w5wiki/
  *
  *  MIT License
  *
@@ -35,19 +35,53 @@ require 'Michelf/Markdown.php';
 require 'Michelf/MarkdownExtra.php';
 
 use Michelf\MarkdownExtra;
+$parser = new MarkdownExtra;
 
 include_once "config.php";
 
+/**
+ * @param url String containing a URL
+ * @return TRUE if url is an external URL (has a scheme part),
+ *     otherwise FALSE
+ */
+function w5is_external_url($url) {
+  $scheme = parse_url($url, PHP_URL_SCHEME);
+  return ($scheme != FALSE && $scheme != NULL);
+}
+
+/**
+ * HTML link to a page.
+ *
+ * @param page Page URL.
+ * @param anchor Anchor text for the link.
+ * @param cssclass CSS class for the link
+ * @return a HTML link to the page
+ */
 function w5link($page, $anchor, $cssclass="w5link") {
   echo "<a class=\"$cssclass\" href=\"$page\">$anchor</a>";
 }
 
+/**
+ * Link to the Wiki home page.
+ *
+ * @param anchor Anchor text.
+ * @return HTML link to home page.
+ */
 function w5home($anchor) {
   w5link(W5_HOME, $anchor);
 }
 
+/**
+ * Filter page names.
+ *
+ * @param pagetitle Page title
+ */
 function w5pagename($pagetitle) {
   return str_replace(' ', '_', strtolower($pagetitle));
+}
+
+function w5pagelink($action, $pageedit="") {
+  return "index.php?do=" . w5pagename($action) . $pageedit;
 }
 
 function w5action($action, $page="") {
@@ -55,13 +89,22 @@ function w5action($action, $page="") {
   if ($page != "") {
     $pageedit = "&page=" . $page;
   }
-  w5link("index.php?do=" . w5pagename($action) . $pageedit, $action);
+  w5link(w5pagelink($action, $pageedit), $action);
+}
+
+function w5pageview($pagetitle) {
+  return "index.php?do=view&page=" . strtolower($pagetitle);
 }
 
 function w5page($pagetitle) {
-  w5link("index.php?do=view&page=" . strtolower($pagetitle), $pagetitle);
+  w5link(w5pageview($pagetitle), $pagetitle);
 }
 
+/**
+ * Wiki main menu.
+ *
+ * Outputs HTML for the menu wrapped in a DIV.
+ */
 function w5menu() {
   global $do, $page;
   echo "<div id=\"w5mainmenu\">";
@@ -104,6 +147,39 @@ function w5textarea($id, $title, $content) {
   w5input("textarea", "inputtext inputtextarea", $id, $title, $content);
 }
 
+function w5pages($titles=TRUE) {
+  $directory = new RecursiveDirectoryIterator(W5_CONTENT);
+  $filter = new RecursiveCallbackFilterIterator(
+      $directory,
+      function($current, $key, $iterator) {
+        $filename = $current->getFilename();
+        if ($filename[0] === '.' || substr($filename, -1) === '~') {
+          return FALSE;
+        }
+        return TRUE;
+      });
+  $iterator = new RecursiveIteratorIterator($filter);
+  $files = array();
+  foreach ($iterator as $info) {
+    $file = preg_replace('!^' . preg_quote(W5_CONTENT) . '!', '', $info->getPathname());
+    if ($titles) {
+      $file = ucfirst(str_replace('_', ' ', preg_replace('/\.md$/', '', strtolower($file))));
+    }
+    $files[] = $file;
+  }
+  return $files;
+}
+
+function w5parentpagemenu() {
+  echo "<div class=\"w5parentmenu\"><label for=\"parent\">Parent page</label>";
+  echo "<select id=\"parent\" name=\"parent\">";
+  echo "<option value=\"\">---</option>";
+  foreach (w5pages() as $page) {
+    echo "<option value=\"$page\">$page</option>";
+  }
+  echo "</select></div>";
+}
+
 function w5editform($page="") {
   $pagecontent = "";
   if ($page != "") {
@@ -112,6 +188,7 @@ function w5editform($page="") {
   echo "<h2>New page</h2>";
   echo "<form>";
   w5text("pagetitle", "Page title", $page);
+  w5parentpagemenu();
   w5textarea("pagecontent", "Content", $pagecontent);
   w5input("submit", "inputsubmit", "submit");
   echo "</form>";
@@ -124,8 +201,8 @@ function w5replace_tags($string) {
   return $string;
 }
 
-function w5filename($pagetitle) {
-  return W5_CONTENT . preg_replace("/[^a-z_]/", "", str_replace(' ', '_', strtolower($pagetitle))) . ".md";
+function w5filename($pagetitle, $dir="") {
+  return W5_CONTENT . preg_replace("!^a-z_/!", "", str_replace(' ', '_', strtolower($pagetitle))) . ".md";
 }
 
 function w5filecontents($pagetitle) {
@@ -133,49 +210,116 @@ function w5filecontents($pagetitle) {
 }
 
 function w5view($pagetitle) {
+  global $parser;
   $page = w5filecontents($pagetitle);
-  $html = MarkdownExtra::defaultTransform(w5replace_tags($page));
+  // $html = MarkdownExtra::defaultTransform(w5replace_tags($page));
+  $html = $parser->transform(w5replace_tags($page));
   echo $html;
 }
 
-function w5footer() {
-  echo "<hr>";
+function w5softwarelink($anchor) {
+  return "<a href=\"" . W5_SOFTWARE_URL . "\">$anchor</a>";
 }
 
+function w5poweredby($link="") {
+  $ret = "Powered by ";
+  if ($link != "") {
+    $ret .= w5softwarelink(W5_SOFTWARE);
+  } else {
+    $ret .= W5_SOFTWARE;
+  }
+  $ret .= " v" . W5_VERSION . " " . W5_VERSION_DATE;
+  return $ret;
+}
+
+/**
+ * Outputs page footer.
+ *
+ * TODO: move footer contents to a Markdown file.
+ */
+function w5footer() {
+  echo "<hr>";
+  echo "<div class=\"w5poweredby\">" . w5poweredby(TRUE) . "</div>\n";
+}
+
+/**
+ * Outputs site index.
+ *
+ * All Wiki pages are output in an unordered list.
+ *
+ * TODO: Handle subpages better, use JavaScript for dynamic
+ * opening/closing of subpage hierarchies
+ */
 function w5siteindex() {
   echo "<ul>";
-  $pages = array_diff(scandir(W5_CONTENT), array('..', '.'));
-  foreach ($pages as $page) {
-    $title = ucfirst(str_replace('_', ' ', preg_replace('/\.md$/', '', strtolower($page))));
+  foreach (w5pages() as $page) {
     echo "<li>";
-    w5page($title);
-    echo "</li>";
+    w5page($page);
+    echo "</li>\n";
   }
   echo "</ul>";
 }
 
+function w5directory($parent_page="") {
+  if ($parent_page != "") {
+    $parent_page = ucfirst(strtolower($parent_page)) . "/";
+  }
+  return W5_CONTENT . $parent_page;
+}
+
 $do = '';
-if (isset($_REQUEST['do'])) {
-  $do = $_REQUEST['do'];
-}
-
 $page = '';
-if (isset($_REQUEST['page'])) {
-  $page = $_REQUEST['page'];
+
+/**
+ * Process request parameters.
+ *
+ * After processing, global variable 'do' contains the action string
+ * which defaults to 'view'. Global variable 'page' contains the name
+ * of the page to view/edit/etc.
+ */
+function w5process_request() {
+  global $do, $page;
+  if (isset($_REQUEST['do'])) {
+    $do = $_REQUEST['do'];
+  }
+
+  if (isset($_REQUEST['page'])) {
+    $page = $_REQUEST['page'];
+  }
+
+  if ($do == 'view') {
+    $pagetitle = $page;
+  }
+
+  if (isset($_REQUEST['submit'])) {
+    /* create new page or store an edited page */
+    $pagetitle = $_REQUEST['pagetitle'];
+    $directory = w5directory($_REQUEST['parent']);
+    mkdir($directory, 0755, TRUE);
+    $filename = $directory . w5filename($pagetitle);
+    file_put_contents($filename, $_REQUEST['pagecontent']);
+    $do = 'view';
+    $page = $pagetitle;
+  }
 }
 
-$pagetitle = '';
-if ($do == 'view') {
-  $pagetitle = $page;
-}
-
-if (isset($_REQUEST['submit'])) {
-  /* create new page */
-  $pagetitle = $_REQUEST['pagetitle'];
-  $filename = w5filename($pagetitle);
-  file_put_contents($filename, $_REQUEST['pagecontent']);
-  $do = 'view';
-  $page = $pagetitle;
+/**
+ * Initial setup.
+ *
+ * Called at beginning of execution to set up internal variables and
+ * process request parameters.
+ */
+function w5setup() {
+  global $parser;
+  $parser->url_filter_func =
+      function ($url) {
+        if (w5is_external_url($url)) {
+          return $url;
+        } else {
+          return w5pageview($url);
+        }
+      };
+  w5process_request();
 }
 
 ?>
@@ -183,11 +327,12 @@ if (isset($_REQUEST['submit'])) {
 <html lang="en">
   <head>
 <?php
-  echo "    <!-- powered by " . W5_TITLE . " v" . W5_VERSION . " " . W5_VERSION_DATE . " -->\n";
+  echo "    <!-- " . w5poweredby() . " -->\n";
   echo "    <!-- " . W5_SOFTWARE_URL . " -->\n";
+  w5setup();
 ?>
     <meta charset="utf-8">
-    <title><?php echo W5_TITLE; ?></title>
+    <title><?php echo W5_SITE; ?></title>
     <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
     <link rel="stylesheet" href="w5style.css">
     <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
@@ -195,7 +340,7 @@ if (isset($_REQUEST['submit'])) {
   </head>
   <body>
     <h1><?php
-  w5home(W5_TITLE);
+  w5home(W5_SITE);
   if ($pagetitle != '') {
     echo ' : ';
     echo $pagetitle;
@@ -230,8 +375,6 @@ if ($textarea > 0) {
   echo "<script>";
   echo "var easyMDE = new EasyMDE();";
   echo "</script>";
-} else {
-  //
 }
 ?>
     </div>
