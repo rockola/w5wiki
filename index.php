@@ -149,8 +149,8 @@ function w5textarea($id, $title, $content) {
   w5input("textarea", "inputtext inputtextarea", $id, $title, $content);
 }
 
-function w5pages($titles=TRUE) {
-  $directory = new RecursiveDirectoryIterator(W5_CONTENT);
+function w5pages($parent=W5_CONTENT, $titles=TRUE) {
+  $directory = new RecursiveDirectoryIterator($parent);
   $filter = new RecursiveCallbackFilterIterator(
       $directory,
       function($current, $key, $iterator) {
@@ -249,11 +249,29 @@ function w5poweredby($link="") {
 }
 
 /**
+ * Links to children of this page.
+ */
+function w5childpages() {
+  global $page, $do;
+  if ($do === 'view' && is_dir(w5directory($page))) {
+    $children = w5pages(w5directory($page));
+    if (!empty($children)) {
+      echo "<div id=\"w5childpages\">Child pages: ";
+      foreach ($children as $child) {
+        w5page($child);
+      }
+      echo "</div>\n";
+    }
+  }
+}
+
+/**
  * Outputs page footer.
  *
  * TODO: move footer contents to a Markdown file.
  */
 function w5footer() {
+  w5childpages();
   echo "<hr>";
   echo "<div class=\"w5poweredby\">" . w5poweredby(TRUE) . "</div>\n";
 }
@@ -285,7 +303,7 @@ function w5siteindex() {
 
 function w5directory($parent_page="") {
   if ($parent_page != "") {
-    $parent_page = ucfirst(strtolower($parent_page)) . "/";
+    $parent_page = strtolower($parent_page) . "/";
   }
   return W5_CONTENT . $parent_page;
 }
