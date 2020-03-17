@@ -7,7 +7,7 @@ h1 {
     font-weight: bold;
 }
 
-.w5link {
+label, .w5link {
     margin-right: 10px;
 }
 
@@ -22,4 +22,10 @@ h1 {
 
 #license {
     margin-top: 20px;
+}
+
+.w5poweredby {
+    foreground-color: #999999;
+    font-style: italic;
+    font-size: 8px;
 }
