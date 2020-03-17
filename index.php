@@ -206,7 +206,10 @@ function w5replace_tags($string) {
 }
 
 function w5filename($pagetitle, $dir="") {
-  return W5_CONTENT . preg_replace("!^a-z_/!", "", str_replace(' ', '_', strtolower($pagetitle))) . ".md";
+  if ($dir === "") {
+    $dir = W5_CONTENT;
+  }
+  return $dir . preg_replace("!^a-z_/!", "", str_replace(' ', '_', strtolower($pagetitle))) . ".md";
 }
 
 function w5filecontents($pagetitle) {
@@ -315,8 +318,10 @@ function w5process_request() {
     /* create new page or store an edited page */
     $pagetitle = $_REQUEST['pagetitle'];
     $directory = w5directory($_REQUEST['parent']);
-    mkdir($directory, 0755, TRUE);
-    $filename = $directory . w5filename($pagetitle);
+    if (!is_dir($directory)) {
+      mkdir($directory, 0755, TRUE);
+    }
+    $filename = w5filename($pagetitle, $directory);
     file_put_contents($filename, $_REQUEST['pagecontent']);
     $do = 'view';
     $page = $pagetitle;
@@ -362,9 +367,9 @@ function w5setup() {
   <body>
     <h1><?php
   w5home(W5_SITE);
-  if ($pagetitle != '') {
+  if ($page != '') {
     echo ' : ';
-    echo $pagetitle;
+    echo $page;
   }
 ?></h1>
 <?php w5menu(); ?>
