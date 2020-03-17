@@ -80,16 +80,16 @@ function w5pagename($pagetitle) {
   return str_replace(' ', '_', strtolower($pagetitle));
 }
 
-function w5pagelink($action, $pageedit="") {
-  return "index.php?do=" . w5pagename($action) . $pageedit;
-}
-
-function w5action($action, $page="") {
+function w5pagelink($action, $page="") {
   $pageedit = "";
   if ($page != "") {
     $pageedit = "&page=" . $page;
   }
-  w5link(w5pagelink($action, $pageedit), $action);
+  return "index.php?do=" . w5pagename($action) . $pageedit;
+}
+
+function w5action($action, $page="") {
+  w5link(w5pagelink($action, $page), $action);
 }
 
 function w5pageview($pagetitle) {
@@ -115,6 +115,7 @@ function w5menu() {
   if ($do == 'view') {
     w5action("Edit", $page);
   }
+  w5page("Help");
   echo "</div>";
 }
 
@@ -182,10 +183,12 @@ function w5parentpagemenu() {
 
 function w5editform($page="") {
   $pagecontent = "";
+  $title = "New page";
   if ($page != "") {
     $pagecontent = w5filecontents($page);
+    $title = "Edit page " . $page;
   }
-  echo "<h2>New page</h2>";
+  echo "<h2>$title</h2>";
   echo "<form>";
   w5text("pagetitle", "Page title", $page);
   w5parentpagemenu();
@@ -217,6 +220,15 @@ function w5view($pagetitle) {
   echo $html;
 }
 
+function w5trashfile($pagetitle) {
+  return W5_TRASH . str_replace('/', '__', w5filename($pagetitle));
+}
+
+function w5delete($pagetitle) {
+  mkdir(W5_TRASH, 0755);
+  rename(w5filename($pagetitle), w5trashfile($pagetitle));
+}
+
 function w5softwarelink($anchor) {
   return "<a href=\"" . W5_SOFTWARE_URL . "\">$anchor</a>";
 }
@@ -242,6 +254,10 @@ function w5footer() {
   echo "<div class=\"w5poweredby\">" . w5poweredby(TRUE) . "</div>\n";
 }
 
+function w5iconlink($icon, $page) {
+  w5link($page, "<i class=\"material-icons\">" . $icon . "</i> " . ucfirst($icon), "w5button");
+}
+
 /**
  * Outputs site index.
  *
@@ -255,6 +271,9 @@ function w5siteindex() {
   foreach (w5pages() as $page) {
     echo "<li>";
     w5page($page);
+    echo "<span class=\"w5buttonspace\">&nbsp;</span>";
+    w5iconlink("edit", w5pagelink("edit", $page));
+    w5iconlink("delete", w5pagelink("delete", $page));
     echo "</li>\n";
   }
   echo "</ul>";
@@ -333,6 +352,7 @@ function w5setup() {
 ?>
     <meta charset="utf-8">
     <title><?php echo W5_SITE; ?></title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
     <link rel="stylesheet" href="w5style.css">
     <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
@@ -361,6 +381,11 @@ switch ($do) {
     break;
   case "edit":
     w5editform($page);
+    break;
+  case "delete":
+    w5delete($page);
+  /* TODO: this assumes site index is the only place where we can delete */
+    w5siteindex();
     break;
   case "site_index":
     w5siteindex();
