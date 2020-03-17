@@ -18,6 +18,7 @@ define("W5_VERSION_DATE", "2020-03-17");
  *
  * Touch these and something will break! */
 define("W5_CONTENT", "content/");
+define("W5_TRASH", W5_CONTENT . ".trash/");
 define("W5_TAGS", array(
     "SITE" => W5_SITE,
     "HOME" => W5_HOME,
@@ -26,5 +27,8 @@ define("W5_TAGS", array(
     "VERSION" => W5_VERSION,
     "VERSION_DATE" => W5_VERSION_DATE,
                         ));
-
+define("W5_ICONS", array(
+    "edit" => "edit",
+    "delete" => "delete",
+                         ));
 ?>
