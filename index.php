@@ -115,6 +115,7 @@ function w5menu() {
   if ($do == 'view') {
     w5action("Edit", $page);
   }
+  echo "&nbsp;";
   w5page("Help");
   echo "</div>";
 }
